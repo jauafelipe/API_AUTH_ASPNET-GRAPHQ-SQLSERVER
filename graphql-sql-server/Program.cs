@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddGraphQLServer()
     .AddQueryType<UserQuery>()
-    .AddMutationType<UserMutationType>();
+    .AddMutationType<UserMutation>();
 
 
 //db

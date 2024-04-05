@@ -29,6 +29,19 @@ namespace graphql_sql_server.src.Service
             await this._context.AddAsync(user);
             await this._context.SaveChangesAsync();
             return userDto;
+        
+        }
+
+
+
+        public async Task<bool> UserExist(GetDatasUserDto userDto)
+        {
+            var user = await this._context.Users.SingleOrDefaultAsync(u =>
+                u.Name == userDto.Name &&
+                u.Surname == userDto.Surname &&
+                u.Email == userDto.Email
+           );
+            return user != null;
         }
     }
 }

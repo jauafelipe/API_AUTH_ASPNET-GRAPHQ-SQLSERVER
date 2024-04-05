@@ -6,8 +6,10 @@ using HotChocolate.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.VisualBasic;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Runtime.Serialization.Json;
+using System.Text.RegularExpressions;
 
 namespace graphql_sql_server.src.Querys
 {
@@ -21,49 +23,30 @@ namespace graphql_sql_server.src.Querys
 
     public class UserMutation
     {
-     
-        public async Task<GetDatasUserDto> CreateUser([Service] UserService service, GetDatasUserDto user)
+      
+        public async Task<GetDatasUserDto> CreateUser([Service] UserService service,GetDatasUserDto user)
         {
+            var userExist = await service.UserExist(user); // metodo do service que verificar se usuario existe
+            //se usuario existe lança exceçao
+            if(userExist) throw new GraphQLException("usuario ja existe");
+            //verificar se email é valido
+            if(!VerificationEmail.IsEmail(user.Email)) throw new GraphQLException("email invalido");
+
+            // faz verificaçao se campos estao vazios
+            if(string.IsNullOrEmpty(user.Name) || string.IsNullOrEmpty(user.Surname) ||
+                string.IsNullOrEmpty(user.Email) || string.IsNullOrEmpty(user.Password)
+                ){
+                throw new GraphQLException("preencha todos os campos");
+            }
+            // cria usuario caso ele nao existir
             return await service.CreateUser(user);
         }
     }
-
-
-    public class UserMutationType : ObjectType<UserMutation>
-    {
-        private readonly UserService _userService;
-        private readonly GetDatasUserDto _inputdto;
-        public UserMutationType(UserService userService, GetDatasUserDto userDtoInput)
+    public static class VerificationEmail { 
+        public static bool IsEmail(string email)
         {
-            _userService = userService;
-            this._inputdto = userDtoInput;
-        }
-
-        protected override void Configure(IObjectTypeDescriptor<UserMutation> descriptor)
-        {
-
-            descriptor.Field(u => u.CreateUser(this._userService, this._inputdto))
-                .Name("createUser")
-                .Argument("user", arg => arg.Type<NonNullType<GetDatasUserDtoInputType>>())
-                .Use(next => async context =>
-                {
-                    var userService = context.Service<UserService>();
-                    var userDto = context.ArgumentValue<GetDatasUserDto>("user");
-
-                    if (userDto == null ||
-                        string.IsNullOrEmpty(userDto.Name) ||
-                        string.IsNullOrEmpty(userDto.Surname) ||
-                        string.IsNullOrEmpty(userDto.Email) ||
-                        string.IsNullOrEmpty(userDto.Password))
-                    {
-                        throw new GraphQLException("Preencha todos os campos");
-                    }
-
-                    var createdUser = await userService.CreateUser(userDto);
-                    context.Result = createdUser;
-
-                    await next(context);
-                });
+            string regex = @"^[\w-\.]+@(gmail\.com|hotmail\.com|outlook\.com)$";
+            return Regex.IsMatch(email, regex);
         }
     }
 }
